@@ -1,0 +1,113 @@
+#version 460 core
+
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout (rgba32f, binding = 0) uniform image2D u_Image;
+
+uniform ivec2 u_Resolution;
+uniform float u_DeltaTime;
+uniform float u_Time;
+
+struct Agent
+{
+    vec2 position;
+    float heading;
+    float cooldown;
+    int sensor_offset;
+    int sensor_number;
+
+    float _padding1;
+    float _padding2;
+};
+
+struct Sensor
+{
+    float angle;
+    float extent;
+
+    float _padding1;
+    float _padding2;
+};
+
+layout (std430, binding = 1) buffer Agents
+{
+    Agent agents[];
+};
+
+layout (std430, binding = 2) buffer Sensors
+{
+    Sensor sensors[];
+};
+
+const float PI = 3.14159265359;
+
+float random(vec2 coordinate)
+{
+    return fract(sin(dot(coordinate, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+float sensor_measurement(Agent agent, float angle, float len)
+{
+    float alpha = agent.heading + angle;
+
+    vec2 position = vec2(len * sin(alpha), len * cos(alpha)) + agent.position;
+    position = mod(position, u_Resolution);
+
+    float color = 0.0f;
+
+    for (int x = -1; x <= 1; ++x)
+    {
+        for (int y = -1; y <= 1; ++y)
+        {
+            vec2 neighbour = position + ivec2(x, y);
+            neighbour = mod(neighbour, u_Resolution);
+
+            color += imageLoad(u_Image, ivec2(neighbour)).r;
+        }
+    }
+
+    return color / 9;
+}
+
+void main()
+{
+    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+
+    uint id = texel.x + texel.y * u_Resolution.y;
+
+    if (id >= agents.length()) return;
+
+    const float alpha = PI / 6.0f;
+    const float treshhold = 0.9f;
+
+    float left = sensor_measurement(agents[id], -alpha, 40.0f);
+    float front = sensor_measurement(agents[id], 0.0f, 100.0f);
+    float right = sensor_measurement(agents[id], alpha, 10.0f);
+
+/*
+    if (left > front)
+    {
+        agents[id].heading -= (PI / 6);
+    }
+    else if (right > front)
+    {
+        agents[id].heading += (PI / 6);
+    }*/
+
+    if (agents[id].cooldown <= 0.0f && (left >= treshhold || right >= treshhold || front >= treshhold))
+    {
+        agents[id].cooldown = 1.0f;
+    }
+    else if (agents[id].cooldown > 0.0f)
+    {
+        agents[id].cooldown -= u_DeltaTime;
+    }
+
+    float angle = (((-alpha) * left) + ((alpha) * right)) + random(agents[id].position) * (PI / 180);
+    agents[id].heading += angle * (agents[id].cooldown > 0.0f ? -1 : 1);
+
+    agents[id].position += vec2(sin(agents[id].heading), cos(agents[id].heading)) * 6;
+    agents[id].position = mod(agents[id].position, u_Resolution);
+
+    //imageStore(u_Image, ivec2(agents[id].position), vec4(imageLoad(u_Image, ivec2(agents[id].position)).rgb + vec3(0.1f, 0.0f, 0.0f), 1));
+    imageStore(u_Image, ivec2(agents[id].position), vec4(1, 0, 0, 1));
+}

@@ -6,5 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory(src bin)
 
+target_include_directories(Physarum PRIVATE include)
+
 include(libs/Libraries.cmake)
 build_libraries()
