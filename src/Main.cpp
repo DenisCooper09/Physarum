@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 #include <random>
+#include <thread>
 
 #include "FileReader.h"
 
@@ -385,11 +386,16 @@ int main()
         glDispatchCompute(TEXTURE_WIDTH, TEXTURE_HEIGHT, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
+        //auto t1 = std::chrono::high_resolution_clock::now();
         glUseProgram(comp_prog_agents);
         glUniform1f(glGetUniformLocation(comp_prog_agents, "u_DeltaTime"), delta_time);
         glUniform1f(glGetUniformLocation(comp_prog_agents, "u_Time"), current_time);
-        glDispatchCompute(TEXTURE_WIDTH, TEXTURE_HEIGHT, 1);
+        glDispatchCompute(TEXTURE_WIDTH / 16, TEXTURE_HEIGHT / 16, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        //auto t2 = std::chrono::high_resolution_clock::now();
+
+        //std::chrono::duration<double, std::milli> t = t2 - t1;
+        //std::cout << t.count() << "ms\n";
 
         glUseProgram(comp_prog_diff);
         glDispatchCompute(TEXTURE_WIDTH, TEXTURE_HEIGHT, 1);
