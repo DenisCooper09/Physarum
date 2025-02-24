@@ -91,16 +91,6 @@ void main()
     float front = sensor_measurement(agents[id], 0.0f, 100.0f);
     float right = sensor_measurement(agents[id], alpha, 10.0f);
 
-/*
-    if (left > front)
-    {
-        agents[id].heading -= (PI / 6);
-    }
-    else if (right > front)
-    {
-        agents[id].heading += (PI / 6);
-    }*/
-
     if (agents[id].cooldown <= 0.0f && (left >= treshhold || right >= treshhold || front >= treshhold))
     {
         agents[id].cooldown = 1.0f;
@@ -116,6 +106,8 @@ void main()
     agents[id].position += vec2(sin(agents[id].heading), cos(agents[id].heading)) * 6;
     agents[id].position = mod(agents[id].position, u_Resolution);
 
-    //imageStore(u_Image, ivec2(agents[id].position), vec4(imageLoad(u_Image, ivec2(agents[id].position)).rgb + vec3(0.1f, 0.0f, 0.0f), 1));
-    imageStore(u_Image, ivec2(agents[id].position), vec4(agents[id].pheromone, 1.0f));
+    vec3 deposit = agents[id].pheromone * agents[id].deposit;
+    vec3 color = imageLoad(u_Image, ivec2(agents[id].position)).rgb;
+
+    imageStore(u_Image, ivec2(agents[id].position), vec4(deposit + color, 1.0f));
 }
