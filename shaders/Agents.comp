@@ -53,14 +53,14 @@ float random(vec2 coordinate)
     return fract(sin(dot(coordinate, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-float sensor_measurement(Agent agent, float angle, float len)
+float sensor_measurement(Agent agent, float angle, float extent)
 {
     float alpha = agent.heading + angle;
 
-    vec2 position = vec2(len * sin(alpha), len * cos(alpha)) + agent.position;
+    vec2 position = vec2(sin(alpha), cos(alpha)) * extent + agent.position;
     position = mod(position, u_Resolution);
 
-    float color = 0.0f;
+    vec3 color = vec3(0.0f);
 
     for (int x = -1; x <= 1; ++x)
     {
@@ -69,11 +69,11 @@ float sensor_measurement(Agent agent, float angle, float len)
             vec2 neighbour = position + ivec2(x, y);
             neighbour = mod(neighbour, u_Resolution);
 
-            color += imageLoad(u_Image, ivec2(neighbour)).r;
+            color += imageLoad(u_Image, ivec2(neighbour)).rgb;
         }
     }
 
-    return color / 9;
+    return length((color / 9) * agent.pheromone);
 }
 
 void main()

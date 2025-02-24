@@ -312,8 +312,8 @@ int main()
 
         GLfloat cooldown;
 
-        GLint   sensor_offset;
-        GLint   sensor_number;
+        GLint sensor_offset;
+        GLint sensor_number;
     };
 
     std::vector<Agent>  agents;
@@ -337,8 +337,16 @@ int main()
         agent.position.y = (GLfloat) random_position_y(mt);
         agent.heading    = random_angle(mt);
 
-        agent.deposit = 1.0f;
-        agent.pheromone = {1.0f, 0.5f, 0.0f};
+        if (i % 2 == 0)
+        {
+            agent.deposit   = 1.0f;
+            agent.pheromone = {1.0f, 0.5f, 0.0f};
+        }
+        else
+        {
+            agent.deposit   = 1.0f;
+            agent.pheromone = {0.0f, 0.5f, 1.0f};
+        }
 
         agent.cooldown = 0.0f;
 
