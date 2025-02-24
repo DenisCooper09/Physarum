@@ -17,6 +17,8 @@ struct Agent
 
     float cooldown;
 
+    float speed;
+
     int sensor_offset;
     int sensor_number;
 
@@ -24,7 +26,6 @@ struct Agent
     float _padding2;
     float _padding3;
     float _padding4;
-    float _padding5;
 };
 
 struct Sensor
@@ -103,7 +104,7 @@ void main()
     float angle = (((-alpha) * left) + ((alpha) * right)) + random(agents[id].position) * (PI / 180);
     agents[id].heading += angle * (agents[id].cooldown > 0.0f ? -1 : 1);
 
-    agents[id].position += vec2(sin(agents[id].heading), cos(agents[id].heading)) * 6;
+    agents[id].position += vec2(sin(agents[id].heading), cos(agents[id].heading)) * agents[id].speed;
     agents[id].position = mod(agents[id].position, u_Resolution);
 
     vec3 deposit = agents[id].pheromone * agents[id].deposit;

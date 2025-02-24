@@ -310,6 +310,8 @@ int main()
         GLfloat deposit;
         Vector3 pheromone;
 
+        GLfloat speed;
+
         GLfloat cooldown;
 
         GLint sensor_offset;
@@ -348,6 +350,7 @@ int main()
             agent.pheromone = {0.0f, 0.5f, 1.0f};
         }
 
+        agent.speed    = 5.0f;
         agent.cooldown = 0.0f;
 
         agent.sensor_offset = sensor_offset;
