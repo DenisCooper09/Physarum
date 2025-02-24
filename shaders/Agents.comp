@@ -32,9 +32,6 @@ struct Sensor
 {
     float angle;
     float extent;
-
-    float _padding1;
-    float _padding2;
 };
 
 layout (std430, binding = 1) buffer Agents
@@ -54,11 +51,11 @@ float random(vec2 coordinate)
     return fract(sin(dot(coordinate, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-float sensor_measurement(Agent agent, float angle, float extent)
+float sensor_measurement(Agent agent, Sensor sensor)
 {
-    float alpha = agent.heading + angle;
+    float alpha = agent.heading + sensor.angle;
 
-    vec2 position = vec2(sin(alpha), cos(alpha)) * extent + agent.position;
+    vec2 position = vec2(sin(alpha), cos(alpha)) * sensor.extent + agent.position;
     position = mod(position, u_Resolution);
 
     vec3 color = vec3(0.0f);
@@ -88,9 +85,15 @@ void main()
     const float alpha = PI / 6.0f;
     const float treshhold = 0.9f;
 
-    float left = sensor_measurement(agents[id], -alpha, 40.0f);
-    float front = sensor_measurement(agents[id], 0.0f, 100.0f);
-    float right = sensor_measurement(agents[id], alpha, 10.0f);
+    Sensor sensors[3] = {
+    Sensor(-alpha, 40.0f),
+    Sensor(0.0f, 100.0f),
+    Sensor(alpha, 10.0f)
+    };
+
+    float left = sensor_measurement(agents[id], sensors[0]);
+    float front = sensor_measurement(agents[id], sensors[1]);
+    float right = sensor_measurement(agents[id], sensors[2]);
 
     if (agents[id].cooldown <= 0.0f && (left >= treshhold || right >= treshhold || front >= treshhold))
     {
