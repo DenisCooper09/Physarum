@@ -286,9 +286,14 @@ int main()
 
     // COMPUTE SHADER SSBO
 
-    struct Vector2
+    struct alignas(8) Vector2
     {
         GLfloat x, y;
+    };
+
+    struct alignas(16) Vector3
+    {
+        GLfloat x, y, z;
     };
 
     struct alignas(16) Sensor
@@ -297,11 +302,16 @@ int main()
         GLfloat extent;
     };
 
-    struct alignas(32) Agent
+    struct alignas(64) Agent
     {
         Vector2 position;
         GLfloat heading;
+
+        GLfloat deposit;
+        Vector3 pheromone;
+
         GLfloat cooldown;
+
         GLint   sensor_offset;
         GLint   sensor_number;
     };
@@ -326,6 +336,9 @@ int main()
         agent.position.x = (GLfloat) random_position_x(mt);
         agent.position.y = (GLfloat) random_position_y(mt);
         agent.heading    = random_angle(mt);
+
+        agent.deposit = 1.0f;
+        agent.pheromone = {1.0f, 0.5f, 0.0f};
 
         agent.cooldown = 0.0f;
 

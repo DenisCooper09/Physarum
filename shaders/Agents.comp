@@ -11,12 +11,20 @@ struct Agent
 {
     vec2 position;
     float heading;
+
+    float deposit;
+    vec3 pheromone;
+
     float cooldown;
+
     int sensor_offset;
     int sensor_number;
 
     float _padding1;
     float _padding2;
+    float _padding3;
+    float _padding4;
+    float _padding5;
 };
 
 struct Sensor
@@ -109,5 +117,5 @@ void main()
     agents[id].position = mod(agents[id].position, u_Resolution);
 
     //imageStore(u_Image, ivec2(agents[id].position), vec4(imageLoad(u_Image, ivec2(agents[id].position)).rgb + vec3(0.1f, 0.0f, 0.0f), 1));
-    imageStore(u_Image, ivec2(agents[id].position), vec4(1, 0, 0, 1));
+    imageStore(u_Image, ivec2(agents[id].position), vec4(agents[id].pheromone, 1.0f));
 }
