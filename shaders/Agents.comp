@@ -41,7 +41,7 @@ layout (std430, binding = 1) buffer Agents
 
 layout (std430, binding = 2) buffer Sensors
 {
-    Sensor sensors[];
+    Sensor sensors2[]; // temporary
 };
 
 const float PI = 3.14159265359;
@@ -91,20 +91,25 @@ void main()
     Sensor(alpha, 10.0f)
     };
 
-    float left = sensor_measurement(agents[id], sensors[0]);
-    float front = sensor_measurement(agents[id], sensors[1]);
-    float right = sensor_measurement(agents[id], sensors[2]);
-
-    if (agents[id].cooldown <= 0.0f && (left >= treshhold || right >= treshhold || front >= treshhold))
+    float accumulated_angle = 0.0f;
+    for (uint i = 0; i < 3; ++i)
     {
-        agents[id].cooldown = 1.0f;
+        float value = sensor_measurement(agents[id], sensors[i]);
+
+        if (agents[id].cooldown <= 0.0f && value >= treshhold)
+        {
+            agents[id].cooldown = 1.0f;
+        }
+
+        accumulated_angle += value * sensors[i].angle;
     }
-    else if (agents[id].cooldown > 0.0f)
+
+    if (agents[id].cooldown > 0.0f)
     {
         agents[id].cooldown -= u_DeltaTime;
     }
 
-    float angle = (((-alpha) * left) + ((alpha) * right)) + random(agents[id].position) * (PI / 180);
+    float angle = accumulated_angle + random(agents[id].position) * (PI / 180);
     agents[id].heading += angle * (agents[id].cooldown > 0.0f ? -1 : 1);
 
     agents[id].position += vec2(sin(agents[id].heading), cos(agents[id].heading)) * agents[id].speed;
