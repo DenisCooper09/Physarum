@@ -10,3 +10,5 @@ target_include_directories(Physarum PRIVATE include)
 
 include(libs/Libraries.cmake)
 build_libraries()
+
+link_libraries(Physarum "glad;glfw")
