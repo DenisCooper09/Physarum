@@ -1,26 +1,32 @@
-set(LIBRARIES
-        glad
-        glfw
-)
-
 function(build_libraries)
-    foreach (LIBRARY ${LIBRARIES})
-        message("Current library: '${LIBRARY}'.")
 
+    set(LIBRARIES
+            glad
+            glfw
+    )
+
+    foreach (LIBRARY ${LIBRARIES})
         set(LIBRARY_DIRECTORY ${PROJECT_SOURCE_DIR}/libs/${LIBRARY})
         set(LIBRARY_BINARY_DIRECTORY ${PROJECT_BINARY_DIR}/libs/${LIBRARY})
 
         if (NOT EXISTS ${LIBRARY_DIRECTORY}/CMakeLists.txt)
-            message("Couldn't find CMakeLists.txt for '${LIBRARY}'.")
+            message("> Couldn't find CMakeLists.txt for '${LIBRARY}'.")
             continue()
         endif ()
 
-        message("Found CMakeLists.txt for '${LIBRARY}'. Building...")
+        message("> Building '${LIBRARY}'...")
         add_subdirectory(${LIBRARY_DIRECTORY} ${LIBRARY_BINARY_DIRECTORY})
-
-        message("Linking...")
-
-        target_link_libraries(Physarum PRIVATE ${LIBRARY})
-        target_include_directories(Physarum PRIVATE ${LIBRARY_DIRECTORY}/include)
     endforeach ()
+
+endfunction()
+
+function(link_libraries TARGET LIBRARIES)
+
+    foreach (LIBRARY ${LIBRARIES})
+        message("> Linking ${LIBRARY} to ${TARGET}...")
+
+        target_link_libraries(${TARGET} PRIVATE ${LIBRARY})
+        target_include_directories(${TARGET} PRIVATE ${PROJECT_SOURCE_DIR}/libs/${LIBRARY}/include)
+    endforeach ()
+
 endfunction()
