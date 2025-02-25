@@ -3,6 +3,7 @@ function(build_libraries)
     set(LIBRARIES
             glad
             glfw
+            imgui
     )
 
     foreach (LIBRARY ${LIBRARIES})
