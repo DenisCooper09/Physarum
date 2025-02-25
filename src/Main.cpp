@@ -356,15 +356,14 @@ int main()
         agent.sensor_offset = sensor_offset;
         agent.sensor_number = random_sensor_number(mt);
 
-        for (size_t j = 0; j < agent.sensor_number; ++j)
-        {
-            sensors.push_back((Sensor) {.angle  = random_angle(mt), .extent = random_extent(mt)});
-        }
-
         agents.push_back(agent);
 
         sensor_offset += agent.sensor_number;
     }
+
+    sensors.push_back((Sensor) {.angle  = -M_PI / 6.0f, .extent = 40.0f});
+    sensors.push_back((Sensor) {.angle  = 0.0f, .extent = 100.0f});
+    sensors.push_back((Sensor) {.angle  = M_PI / 6.0f, .extent = 40.0f});
 
     GLuint SSBOs[2];
     glGenBuffers(2, SSBOs);

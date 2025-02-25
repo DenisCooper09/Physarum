@@ -32,6 +32,9 @@ struct Sensor
 {
     float angle;
     float extent;
+
+    float _padding1;
+    float _padding2;
 };
 
 layout (std430, binding = 1) buffer Agents
@@ -41,7 +44,7 @@ layout (std430, binding = 1) buffer Agents
 
 layout (std430, binding = 2) buffer Sensors
 {
-    Sensor sensors2[]; // temporary
+    Sensor sensors[];
 };
 
 const float PI = 3.14159265359;
@@ -82,17 +85,10 @@ void main()
 
     if (id >= agents.length()) return;
 
-    const float alpha = PI / 6.0f;
     const float treshhold = 0.9f;
 
-    Sensor sensors[3] = {
-    Sensor(-alpha, 40.0f),
-    Sensor(0.0f, 100.0f),
-    Sensor(alpha, 10.0f)
-    };
-
     float accumulated_angle = 0.0f;
-    for (uint i = 0; i < 3; ++i)
+    for (uint i = 0; i < sensors.length(); ++i)
     {
         float value = sensor_measurement(agents[id], sensors[i]);
 
@@ -110,7 +106,8 @@ void main()
     }
 
     float angle = accumulated_angle + random(agents[id].position) * (PI / 180);
-    agents[id].heading += angle * (agents[id].cooldown > 0.0f ? -1 : 1);
+
+    agents[id].heading += angle * mix(1.0f, -1.0f, smoothstep(0.0f, 1.0f, agents[id].cooldown));
 
     agents[id].position += vec2(sin(agents[id].heading), cos(agents[id].heading)) * agents[id].speed;
     agents[id].position = mod(agents[id].position, u_Resolution);
