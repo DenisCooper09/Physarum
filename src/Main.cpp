@@ -304,18 +304,16 @@ int main()
 
     struct alignas(64) Agent
     {
-        Vector2 position;
         GLfloat heading;
-
         GLfloat deposit;
-        Vector3 pheromone;
-
         GLfloat speed;
-
         GLfloat cooldown;
 
-        GLint sensor_offset;
-        GLint sensor_number;
+        GLuint sensor_offset;
+        GLuint sensor_number;
+
+        Vector2 position;
+        Vector3 pheromone;
     };
 
     std::vector<Agent>  agents;
@@ -327,9 +325,8 @@ int main()
     std::uniform_int_distribution<GLint>    random_position_y(0, TEXTURE_HEIGHT - 1);
     std::uniform_real_distribution<GLfloat> random_angle(-M_PI_2, M_PI_2);
     std::uniform_real_distribution<GLfloat> random_extent(2.0f, 10.0f);
-    std::uniform_int_distribution<GLint>    random_sensor_number(3, 10);
 
-    GLint sensor_offset = 0;
+    GLuint sensor_offset = 0;
 
     for (size_t i = 0; i < NUM_AGENTS; ++i)
     {
@@ -354,16 +351,16 @@ int main()
         agent.cooldown = 0.0f;
 
         agent.sensor_offset = sensor_offset;
-        agent.sensor_number = random_sensor_number(mt);
+        agent.sensor_number = 3;
+
+        sensors.push_back((Sensor) {.angle  = -M_PI / 6.0f, .extent = 40.0f});
+        sensors.push_back((Sensor) {.angle  = 0.0f, .extent = 100.0f});
+        sensors.push_back((Sensor) {.angle  = M_PI / 6.0f, .extent = 40.0f});
 
         agents.push_back(agent);
 
         sensor_offset += agent.sensor_number;
     }
-
-    sensors.push_back((Sensor) {.angle  = -M_PI / 6.0f, .extent = 40.0f});
-    sensors.push_back((Sensor) {.angle  = 0.0f, .extent = 100.0f});
-    sensors.push_back((Sensor) {.angle  = M_PI / 6.0f, .extent = 40.0f});
 
     GLuint SSBOs[2];
     glGenBuffers(2, SSBOs);

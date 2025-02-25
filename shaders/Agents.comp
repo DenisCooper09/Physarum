@@ -9,23 +9,18 @@ uniform float u_Time;
 
 struct Agent
 {
-    vec2 position;
     float heading;
-
     float deposit;
-    vec3 pheromone;
-
+    float speed;
     float cooldown;
 
-    float speed;
+    uint sensor_offset;
+    uint sensor_number;
 
-    int sensor_offset;
-    int sensor_number;
+    vec2 position;
+    vec3 pheromone;
 
-    float _padding1;
-    float _padding2;
-    float _padding3;
-    float _padding4;
+    float _padding1[4];
 };
 
 struct Sensor
@@ -88,7 +83,7 @@ void main()
     const float treshhold = 0.9f;
 
     float accumulated_angle = 0.0f;
-    for (uint i = 0; i < sensors.length(); ++i)
+    for (uint i = agents[id].sensor_offset; i < agents[id].sensor_offset + agents[id].sensor_number; ++i)
     {
         float value = sensor_measurement(agents[id], sensors[i]);
 
