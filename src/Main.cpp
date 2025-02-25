@@ -332,9 +332,12 @@ int main()
     struct alignas(64) Agent
     {
         GLfloat heading;
+        GLfloat wiggle;
         GLfloat deposit;
         GLfloat speed;
         GLfloat cooldown;
+        GLfloat cooldown_time;
+        GLfloat threshold;
 
         GLuint sensor_offset;
         GLuint sensor_number;
@@ -374,8 +377,13 @@ int main()
             agent.pheromone = {0.0f, 0.5f, 1.0f};
         }
 
-        agent.speed    = 5.0f;
-        agent.cooldown = 0.0f;
+        agent.speed = 5.0f;
+
+        agent.cooldown      = 0.0f;
+        agent.cooldown_time = 1.0f;
+        agent.threshold     = 1.0f;
+
+        agent.wiggle = M_PI / 180;
 
         agent.sensor_offset = sensor_offset;
         agent.sensor_number = 3;

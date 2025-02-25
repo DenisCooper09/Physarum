@@ -10,9 +10,12 @@ uniform float u_Time;
 struct Agent
 {
     float heading;
+    float wiggle;
     float deposit;
     float speed;
     float cooldown;
+    float cooldown_time;
+    float threshold;
 
     uint sensor_offset;
     uint sensor_number;
@@ -20,7 +23,7 @@ struct Agent
     vec2 position;
     vec3 pheromone;
 
-    float _padding1[4];
+    float _padding1;
 };
 
 struct Sensor
@@ -80,16 +83,14 @@ void main()
 
     if (id >= agents.length()) return;
 
-    const float treshhold = 0.9f;
-
     float accumulated_angle = 0.0f;
     for (uint i = agents[id].sensor_offset; i < agents[id].sensor_offset + agents[id].sensor_number; ++i)
     {
         float value = sensor_measurement(agents[id], sensors[i]);
 
-        if (agents[id].cooldown <= 0.0f && value >= treshhold)
+        if (agents[id].cooldown <= 0.0f && value >= agents[id].threshold)
         {
-            agents[id].cooldown = 1.0f;
+            agents[id].cooldown = agents[id].cooldown_time;
         }
 
         accumulated_angle += value * sensors[i].angle;
@@ -100,7 +101,7 @@ void main()
         agents[id].cooldown -= u_DeltaTime;
     }
 
-    float angle = accumulated_angle + random(agents[id].position) * (PI / 180);
+    float angle = accumulated_angle + random(agents[id].position) * agents[id].wiggle;
 
     agents[id].heading += angle * mix(1.0f, -1.0f, smoothstep(0.0f, 1.0f, agents[id].cooldown));
 
