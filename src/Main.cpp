@@ -116,30 +116,34 @@ private:
     GLuint m_ID;
 };
 
-void CreateShader(GLuint *program, GLuint *comp_prog_agents, GLuint *comp_prog_decay, GLuint *comp_prog_diff)
+void CreateShader(GLuint *program, GLuint *comp_prog_agents, GLuint *comp_prog_decay, GLuint *comp_prog_diff, GLuint *comp_prog_update)
 {
     Shader vertex(ShaderType::Vertex);
     Shader fragment(ShaderType::Fragment);
     Shader compute_agents(ShaderType::Compute);
     Shader compute_decay(ShaderType::Compute);
     Shader compute_diff(ShaderType::Compute);
+    Shader compute_update(ShaderType::Compute);
 
     vertex.Compile("../../shaders/Vertex.vert");
     fragment.Compile("../../shaders/Fragment.frag");
     compute_agents.Compile("../../shaders/Agents.comp");
     compute_decay.Compile("../../shaders/Decay.comp");
     compute_diff.Compile("../../shaders/Diffuse.comp");
+    compute_update.Compile("../../shaders/UpdateSimulationParameters.comp");
 
     *program          = glCreateProgram();
     *comp_prog_agents = glCreateProgram();
     *comp_prog_decay  = glCreateProgram();
     *comp_prog_diff   = glCreateProgram();
+    *comp_prog_update = glCreateProgram();
 
     glAttachShader(*program, vertex.GetID());
     glAttachShader(*program, fragment.GetID());
     glAttachShader(*comp_prog_agents, compute_agents.GetID());
     glAttachShader(*comp_prog_decay, compute_decay.GetID());
     glAttachShader(*comp_prog_diff, compute_diff.GetID());
+    glAttachShader(*comp_prog_update, compute_update.GetID());
 
     glLinkProgram(*program);
 
@@ -179,6 +183,16 @@ void CreateShader(GLuint *program, GLuint *comp_prog_agents, GLuint *comp_prog_d
     {
         GLchar message[1024];
         glGetProgramInfoLog(*comp_prog_diff, 1024, nullptr, message);
+        std::cerr << "Failed to link program: " << message << "\n";
+    }
+
+    glLinkProgram(*comp_prog_update);
+
+    glGetProgramiv(*comp_prog_update, GL_LINK_STATUS, &linked);
+    if (!linked)
+    {
+        GLchar message[1024];
+        glGetProgramInfoLog(*comp_prog_update, 1024, nullptr, message);
         std::cerr << "Failed to link program: " << message << "\n";
     }
 }
@@ -271,8 +285,8 @@ int main()
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, TEXTURE_WIDTH, TEXTURE_HEIGHT, 0, GL_RGBA, GL_FLOAT, nullptr);
     glBindImageTexture(0, texture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
-    GLuint prog, comp_prog_agents, comp_prog_decay, comp_prog_diff;
-    CreateShader(&prog, &comp_prog_agents, &comp_prog_decay, &comp_prog_diff);
+    GLuint prog, comp_prog_agents, comp_prog_decay, comp_prog_diff, comp_prog_update;
+    CreateShader(&prog, &comp_prog_agents, &comp_prog_decay, &comp_prog_diff, &comp_prog_update);
 
     uint32_t vao, vbo, ebo;
     glGenVertexArrays(1, &vao);
@@ -420,6 +434,10 @@ int main()
     {
         glUniform2i(glGetUniformLocation(comp_prog_decay, "u_Resolution"), TEXTURE_WIDTH, TEXTURE_HEIGHT);
     }
+    glUseProgram(comp_prog_update);
+    {
+        glUniform2i(glGetUniformLocation(comp_prog_update, "u_Resolution"), TEXTURE_WIDTH, TEXTURE_HEIGHT);
+    }
     glUseProgram(0);
 
     // Shader<Vertex, Fragment> main_shader("../../Vertex.vert", "../../Fragment.frag");
@@ -438,9 +456,47 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        if (ImGui::Begin("Hello!"))
+        if (ImGui::Begin("Agents Settings"))
         {
-            ImGui::Text("Hello, World!");
+            static float wiggle = M_PI / 180.0f, deposit = 1.0f, speed = 5.0f, cooldown_time = 1.0f, threshold = 1.0f;
+
+            bool updated = false;
+
+            updated |= ImGui::SliderFloat("Speed", &speed, 0.0f, 100.0f);
+            updated |= ImGui::SliderAngle("Wiggle", &wiggle);
+            updated |= ImGui::SliderFloat("Deposit", &deposit, 0.0f, 100.0f);
+            updated |= ImGui::SliderFloat("Threshold", &threshold, 0.0f, 5.0f);
+            updated |= ImGui::SliderFloat("Cooldown Time", &cooldown_time, 0.0f, 10.0f);
+
+            if (updated)
+            {
+                glUseProgram(comp_prog_update);
+                glUniform1f(glGetUniformLocation(comp_prog_update, "u_Wiggle"), wiggle);
+                glUniform1f(glGetUniformLocation(comp_prog_update, "u_Deposit"), deposit);
+                glUniform1f(glGetUniformLocation(comp_prog_update, "u_Speed"), speed);
+                glUniform1f(glGetUniformLocation(comp_prog_update, "u_CooldownTime"), cooldown_time);
+                glUniform1f(glGetUniformLocation(comp_prog_update, "u_Threshold"), threshold);
+                glDispatchCompute(TEXTURE_WIDTH / 16, TEXTURE_HEIGHT / 16, 1);
+                glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
+            }
+
+            ImGui::End();
+        }
+
+        if (ImGui::Begin("Decay Settings"))
+        {
+            static float decay = 0.995f;
+
+            bool updated = false;
+
+            updated |= ImGui::SliderFloat("Decay", &decay, 0.0f, 1.0f);
+
+            if (updated)
+            {
+                glUseProgram(comp_prog_decay);
+                glUniform1f(glGetUniformLocation(comp_prog_decay, "u_Decay"), decay);
+                glUseProgram(0);
+            }
 
             ImGui::End();
         }
@@ -452,14 +508,14 @@ int main()
 
         glUseProgram(comp_prog_decay);
         glDispatchCompute(TEXTURE_WIDTH, TEXTURE_HEIGHT, 1);
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 
         //auto t1 = std::chrono::high_resolution_clock::now();
         glUseProgram(comp_prog_agents);
         glUniform1f(glGetUniformLocation(comp_prog_agents, "u_DeltaTime"), delta_time);
         glUniform1f(glGetUniformLocation(comp_prog_agents, "u_Time"), current_time);
         glDispatchCompute(TEXTURE_WIDTH / 16, TEXTURE_HEIGHT / 16, 1);
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
         //auto t2 = std::chrono::high_resolution_clock::now();
 
         //std::chrono::duration<double, std::milli> t = t2 - t1;
@@ -467,7 +523,7 @@ int main()
 
         glUseProgram(comp_prog_diff);
         glDispatchCompute(TEXTURE_WIDTH, TEXTURE_HEIGHT, 1);
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 
         glBindTexture(GL_TEXTURE_2D, texture);
         glUseProgram(prog); // main_shader.Use();

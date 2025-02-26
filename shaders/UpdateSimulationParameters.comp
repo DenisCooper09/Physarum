@@ -1,0 +1,50 @@
+#version 460 core
+
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+uniform ivec2 u_Resolution;
+
+uniform float u_Wiggle;
+uniform float u_Deposit;
+uniform float u_Speed;
+uniform float u_CooldownTime;
+uniform float u_Threshold;
+
+struct Agent
+{
+    float heading;
+    float wiggle;
+    float deposit;
+    float speed;
+    float cooldown;
+    float cooldown_time;
+    float threshold;
+
+    uint sensor_offset;
+    uint sensor_number;
+
+    vec2 position;
+    vec3 pheromone;
+
+    float _padding1;
+};
+
+layout (std430, binding = 1) buffer Agents
+{
+    Agent agents[];
+};
+
+void main()
+{
+    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+
+    uint id = texel.x + texel.y * u_Resolution.y;
+
+    if (id >= agents.length()) return;
+
+    agents[id].wiggle = u_Wiggle;
+    agents[id].deposit = u_Deposit;
+    agents[id].speed = u_Speed;
+    agents[id].cooldown_time = u_CooldownTime;
+    agents[id].threshold = u_Threshold;
+}

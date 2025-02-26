@@ -5,6 +5,8 @@ layout (rgba32f, binding = 0) uniform image2D u_Image;
 
 uniform ivec2 u_Resolution;
 
+uniform float u_Decay = 0.995f;
+
 struct Agent
 {
     vec2 position;
@@ -22,30 +24,9 @@ layout (std430, binding = 1) buffer Agents
     Agent agents[];
 };
 
-const float DECAY = 0.995f;
-const float DECAY_AGENT = 0.1f;
-
 void main()
 {
     ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
     vec4 texel_color = imageLoad(u_Image, texel);
-    imageStore(u_Image, texel, texel_color * vec4(DECAY, DECAY, DECAY, 1.0f));
-
-    /*
-    uint id = texel.x + texel.y * u_Resolution.y;
-
-    if (id >= agents.length())
-    {
-        imageStore(u_Image, texel, texel_color * vec4(DECAY, DECAY, DECAY, 1.0f));
-        return;
-    }
-
-    if (texel == ivec2(agents[id].position))
-    {
-        imageStore(u_Image, texel, texel_color * vec4(DECAY_AGENT, DECAY_AGENT, DECAY_AGENT, 1.0f));
-    }
-    else
-    {
-        imageStore(u_Image, texel, texel_color * vec4(DECAY, DECAY, DECAY, 1.0f));
-    }*/
+    imageStore(u_Image, texel, texel_color * vec4(u_Decay, u_Decay, u_Decay, 1.0f));
 }
