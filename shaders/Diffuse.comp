@@ -3,6 +3,8 @@
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 layout (rgba32f, binding = 0) uniform image2D u_Image;
 
+uniform ivec2 u_Resolution;
+
 void main()
 {
     ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
@@ -13,9 +15,9 @@ void main()
     {
         for (int y = -1; y <= 1; ++y)
         {
-            ivec2 neighbour = texel + ivec2(x, y);
+            vec2 neighbour = vec2(texel) + vec2(x, y);
+            neighbour = mod(neighbour, u_Resolution);
 
-            //neighbour = mod(neighbour, vec2(1024, 1024));
             color_sum += imageLoad(u_Image, ivec2(neighbour));
         }
     }

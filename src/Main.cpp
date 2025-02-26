@@ -434,6 +434,10 @@ int main()
     {
         glUniform2i(glGetUniformLocation(comp_prog_decay, "u_Resolution"), TEXTURE_WIDTH, TEXTURE_HEIGHT);
     }
+    glUseProgram(comp_prog_diff);
+    {
+        glUniform2i(glGetUniformLocation(comp_prog_diff, "u_Resolution"), TEXTURE_WIDTH, TEXTURE_HEIGHT);
+    }
     glUseProgram(comp_prog_update);
     {
         glUniform2i(glGetUniformLocation(comp_prog_update, "u_Resolution"), TEXTURE_WIDTH, TEXTURE_HEIGHT);
