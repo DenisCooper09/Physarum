@@ -6,6 +6,9 @@
 #include <random>
 #include <thread>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -195,6 +198,18 @@ void CreateShader(GLuint *program, GLuint *comp_prog_agents, GLuint *comp_prog_d
         glGetProgramInfoLog(*comp_prog_update, 1024, nullptr, message);
         std::cerr << "Failed to link program: " << message << "\n";
     }
+}
+
+static bool SaveTexture_PNG(GLuint texture, GLuint width, GLuint height, const std::string &path)
+{
+    glBindTexture(GL_TEXTURE_2D, texture);
+    std::vector<GLubyte> pixels(width * height * 4);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    stbi_flip_vertically_on_write(true);
+
+    return stbi_write_png(path.c_str(), (GLint) width, (GLint) height, 4, pixels.data(), (GLint) width * 4);
 }
 
 int main()
@@ -496,6 +511,16 @@ int main()
                 glUseProgram(comp_prog_decay);
                 glUniform1f(glGetUniformLocation(comp_prog_decay, "u_Decay"), decay);
                 glUseProgram(0);
+            }
+
+            ImGui::End();
+        }
+
+        if (ImGui::Begin("Save as Image..."))
+        {
+            if (ImGui::Button("Save"))
+            {
+                SaveTexture_PNG(texture, TEXTURE_WIDTH, TEXTURE_HEIGHT, "image.png");
             }
 
             ImGui::End();
