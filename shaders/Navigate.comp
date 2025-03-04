@@ -1,0 +1,65 @@
+#version 460 core
+
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout (rgba32f, binding = 0) uniform image2D u_Image;
+
+uniform ivec2 u_Resolution;
+
+const float PI = 3.14159265359;
+
+const float ANGLE = PI / 4;
+
+struct Agent
+{
+    vec2 position;
+    float heading;
+    float cooldown;
+    int sensor_offset;
+    int sensor_number;
+
+    float _padding1;
+    float _padding2;
+};
+
+layout (std430, binding = 1) buffer Agents
+{
+    Agent agents[];
+};
+
+float sensor_probe(Agent agent, float angle, float extent)
+{
+    float alpha = angle + agent.heading;
+
+    vec2 position = vec2(sin(alpha), cos(alpha)) * extent + agent.position;
+
+    position = mod(position, u_Resolution);
+
+    return imageLoad(u_Image, ivec2(position)).r;
+}
+
+float random(vec2 coordinate)
+{
+    return fract(sin(dot(coordinate, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+void main()
+{
+    uint i = gl_GlobalInvocationID.x;
+
+    float right = sensor_probe(agents[i], ANGLE, 30.0f);
+    float center = sensor_probe(agents[i], 0.0f, 50.0f);
+    float left = sensor_probe(agents[i], -ANGLE, 30.0f);
+
+    if (left > center && left > right)
+    {
+        agents[i].heading -= ANGLE;
+    }
+    else if (right > center && right > left)
+    {
+        agents[i].heading += ANGLE;
+    }
+    else if (left == right && left < center && right < center)
+    {
+        agents[i].heading += ((random(agents[i].position) - 0.5f) * 2.0f) * PI;
+    }
+}

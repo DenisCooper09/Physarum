@@ -8,5 +8,5 @@ in vec2 TextureCoordinates;
 
 void main()
 {
-    o_FragmentColor = vec4(texture(u_Texture, TextureCoordinates).rgb, 1);
+    o_FragmentColor = vec4(mix(vec3(0), vec3(1), texture(u_Texture, TextureCoordinates).r), 1);
 }

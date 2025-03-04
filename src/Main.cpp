@@ -111,28 +111,32 @@ private:
     GLuint m_ID;
 };
 
-void CreateShader(GLuint *program, GLuint *comp_prog_agents, GLuint *comp_prog_decay, GLuint *comp_prog_diff)
+void CreateShader(GLuint *program, GLuint *comp_prog_agents, GLuint *comp_prog_decay, GLuint *comp_prog_diff, GLuint *comp_prog_nav)
 {
     Shader vertex(ShaderType::Vertex);
     Shader fragment(ShaderType::Fragment);
     Shader compute_agents(ShaderType::Compute);
+    Shader compute_navigation(ShaderType::Compute);
     Shader compute_decay(ShaderType::Compute);
     Shader compute_diff(ShaderType::Compute);
 
     vertex.Compile("../../shaders/Vertex.vert");
     fragment.Compile("../../shaders/Fragment.frag");
     compute_agents.Compile("../../shaders/Agents.comp");
+    compute_navigation.Compile("../../shaders/Navigate.comp");
     compute_decay.Compile("../../shaders/Decay.comp");
     compute_diff.Compile("../../shaders/Diffuse.comp");
 
     *program          = glCreateProgram();
     *comp_prog_agents = glCreateProgram();
+    *comp_prog_nav    = glCreateProgram();
     *comp_prog_decay  = glCreateProgram();
     *comp_prog_diff   = glCreateProgram();
 
     glAttachShader(*program, vertex.GetID());
     glAttachShader(*program, fragment.GetID());
     glAttachShader(*comp_prog_agents, compute_agents.GetID());
+    glAttachShader(*comp_prog_nav, compute_navigation.GetID());
     glAttachShader(*comp_prog_decay, compute_decay.GetID());
     glAttachShader(*comp_prog_diff, compute_diff.GetID());
 
@@ -154,6 +158,16 @@ void CreateShader(GLuint *program, GLuint *comp_prog_agents, GLuint *comp_prog_d
     {
         GLchar message[1024];
         glGetProgramInfoLog(*comp_prog_agents, 1024, nullptr, message);
+        std::cerr << "Failed to link program: " << message << "\n";
+    }
+
+    glLinkProgram(*comp_prog_nav);
+
+    glGetProgramiv(*comp_prog_nav, GL_LINK_STATUS, &linked);
+    if (!linked)
+    {
+        GLchar message[1024];
+        glGetProgramInfoLog(*comp_prog_nav, 1024, nullptr, message);
         std::cerr << "Failed to link program: " << message << "\n";
     }
 
@@ -243,8 +257,8 @@ int main()
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, TEXTURE_WIDTH, TEXTURE_HEIGHT, 0, GL_RGBA, GL_FLOAT, nullptr);
     glBindImageTexture(0, texture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
-    GLuint prog, comp_prog_agents, comp_prog_decay, comp_prog_diff;
-    CreateShader(&prog, &comp_prog_agents, &comp_prog_decay, &comp_prog_diff);
+    GLuint prog, comp_prog_agents, comp_prog_decay, comp_prog_diff, comp_prog_nav;
+    CreateShader(&prog, &comp_prog_agents, &comp_prog_decay, &comp_prog_diff, &comp_prog_nav);
 
     uint32_t vao, vbo, ebo;
     glGenVertexArrays(1, &vao);
@@ -356,9 +370,17 @@ int main()
     }
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+    glUseProgram(comp_prog_nav);
+    {
+        glUniform2i(glGetUniformLocation(comp_prog_nav, "u_Resolution"), TEXTURE_WIDTH, TEXTURE_HEIGHT);
+    }
     glUseProgram(comp_prog_agents);
     {
         glUniform2i(glGetUniformLocation(comp_prog_agents, "u_Resolution"), TEXTURE_WIDTH, TEXTURE_HEIGHT);
+    }
+    glUseProgram(comp_prog_diff);
+    {
+        glUniform2i(glGetUniformLocation(comp_prog_diff, "u_Resolution"), TEXTURE_WIDTH, TEXTURE_HEIGHT);
     }
     glUseProgram(comp_prog_decay);
     {
@@ -381,8 +403,8 @@ int main()
         glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUseProgram(comp_prog_decay);
-        glDispatchCompute(TEXTURE_WIDTH, TEXTURE_HEIGHT, 1);
+        glUseProgram(comp_prog_nav);
+        glDispatchCompute(NUM_AGENTS, 1, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
         glUseProgram(comp_prog_agents);
@@ -392,6 +414,10 @@ int main()
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
         glUseProgram(comp_prog_diff);
+        glDispatchCompute(TEXTURE_WIDTH, TEXTURE_HEIGHT, 1);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+        glUseProgram(comp_prog_decay);
         glDispatchCompute(TEXTURE_WIDTH, TEXTURE_HEIGHT, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 

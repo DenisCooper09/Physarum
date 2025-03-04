@@ -23,29 +23,11 @@ layout (std430, binding = 1) buffer Agents
 };
 
 const float DECAY = 0.995f;
-const float DECAY_AGENT = 0.1f;
 
 void main()
 {
-    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
-    vec4 texel_color = imageLoad(u_Image, texel);
-    imageStore(u_Image, texel, texel_color * vec4(DECAY, DECAY, DECAY, 1.0f));
-
-    /*
-    uint id = texel.x + texel.y * u_Resolution.y;
-
-    if (id >= agents.length())
-    {
-        imageStore(u_Image, texel, texel_color * vec4(DECAY, DECAY, DECAY, 1.0f));
-        return;
-    }
-
-    if (texel == ivec2(agents[id].position))
-    {
-        imageStore(u_Image, texel, texel_color * vec4(DECAY_AGENT, DECAY_AGENT, DECAY_AGENT, 1.0f));
-    }
-    else
-    {
-        imageStore(u_Image, texel, texel_color * vec4(DECAY, DECAY, DECAY, 1.0f));
-    }*/
+    ivec2 coordinate = ivec2(gl_GlobalInvocationID.xy);
+    vec4 color = imageLoad(u_Image, coordinate);
+    color.r *= DECAY;
+    imageStore(u_Image, coordinate, color);
 }

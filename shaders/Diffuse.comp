@@ -3,22 +3,26 @@
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 layout (rgba32f, binding = 0) uniform image2D u_Image;
 
+uniform ivec2 u_Resolution;
+
 void main()
 {
-    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 coordinate = ivec2(gl_GlobalInvocationID.xy);
 
-    vec4 color_sum = vec4(0, 0, 0, 0);
+    float sum = 0.0f;
 
     for (int x = -1; x <= 1; ++x)
     {
         for (int y = -1; y <= 1; ++y)
         {
-            ivec2 neighbour = texel + ivec2(x, y);
+            vec2 delta = mod(vec2(x, y) + coordinate, u_Resolution);
 
-            //neighbour = mod(neighbour, vec2(1024, 1024));
-            color_sum += imageLoad(u_Image, ivec2(neighbour));
+            sum += imageLoad(u_Image, ivec2(delta)).r;
         }
     }
 
-    imageStore(u_Image, texel, color_sum / 9);
+    vec4 color = imageLoad(u_Image, coordinate);
+    color.r = sum / 9;
+
+    imageStore(u_Image, coordinate, color);
 }
