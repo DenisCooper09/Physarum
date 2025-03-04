@@ -388,7 +388,7 @@ int main()
         glUseProgram(comp_prog_agents);
         glUniform1f(glGetUniformLocation(comp_prog_agents, "u_DeltaTime"), delta_time);
         glUniform1f(glGetUniformLocation(comp_prog_agents, "u_Time"), current_time);
-        glDispatchCompute(TEXTURE_WIDTH, TEXTURE_HEIGHT, 1);
+        glDispatchCompute(NUM_AGENTS, 1, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
         glUseProgram(comp_prog_diff);

@@ -70,44 +70,40 @@ float sensor_measurement(Agent agent, float angle, float len)
 
 void main()
 {
-    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
-
-    uint id = texel.x + texel.y * u_Resolution.y;
-
-    if (id >= agents.length()) return;
+    uint i = gl_GlobalInvocationID.x;
 
     const float alpha = PI / 6.0f;
     const float treshhold = 0.9f;
 
-    float left = sensor_measurement(agents[id], -alpha, 40.0f);
-    float front = sensor_measurement(agents[id], 0.0f, 100.0f);
-    float right = sensor_measurement(agents[id], alpha, 10.0f);
+    float left = sensor_measurement(agents[i], -alpha, 40.0f);
+    float front = sensor_measurement(agents[i], 0.0f, 100.0f);
+    float right = sensor_measurement(agents[i], alpha, 10.0f);
 
 /*
     if (left > front)
     {
-        agents[id].heading -= (PI / 6);
+        agents[i].heading -= (PI / 6);
     }
     else if (right > front)
     {
-        agents[id].heading += (PI / 6);
+        agents[i].heading += (PI / 6);
     }*/
 
-    if (agents[id].cooldown <= 0.0f && (left >= treshhold || right >= treshhold || front >= treshhold))
+    if (agents[i].cooldown <= 0.0f && (left >= treshhold || right >= treshhold || front >= treshhold))
     {
-        agents[id].cooldown = 1.0f;
+        agents[i].cooldown = 1.0f;
     }
-    else if (agents[id].cooldown > 0.0f)
+    else if (agents[i].cooldown > 0.0f)
     {
-        agents[id].cooldown -= u_DeltaTime;
+        agents[i].cooldown -= u_DeltaTime;
     }
 
-    float angle = (((-alpha) * left) + ((alpha) * right)) + random(agents[id].position) * (PI / 180);
-    agents[id].heading += angle * (agents[id].cooldown > 0.0f ? -1 : 1);
+    float angle = (((-alpha) * left) + ((alpha) * right)) + random(agents[i].position) * (PI / 180);
+    agents[i].heading += angle * (agents[i].cooldown > 0.0f ? -1 : 1);
 
-    agents[id].position += vec2(sin(agents[id].heading), cos(agents[id].heading)) * 6;
-    agents[id].position = mod(agents[id].position, u_Resolution);
+    agents[i].position += vec2(sin(agents[i].heading), cos(agents[i].heading)) * 6;
+    agents[i].position = mod(agents[i].position, u_Resolution);
 
-    //imageStore(u_Image, ivec2(agents[id].position), vec4(imageLoad(u_Image, ivec2(agents[id].position)).rgb + vec3(0.1f, 0.0f, 0.0f), 1));
-    imageStore(u_Image, ivec2(agents[id].position), vec4(1, 0, 0, 1));
+    //imageStore(u_Image, ivec2(agents[i].position), vec4(imageLoad(u_Image, ivec2(agents[i].position)).rgb + vec3(0.1f, 0.0f, 0.0f), 1));
+    imageStore(u_Image, ivec2(agents[i].position), vec4(1, 0, 0, 1));
 }
