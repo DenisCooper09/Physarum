@@ -1,12 +1,12 @@
 #include "Common.glsl"
 #include "Agent.glsl"
 
-const float DECAY = 0.995f;
+uniform float u_Decay = 0.995f;
 
 void main()
 {
     ivec2 coordinate = ivec2(gl_GlobalInvocationID.xy);
     vec4 color = imageLoad(u_Image, coordinate);
-    color.r *= DECAY;
+    color.r *= u_Decay;
     imageStore(u_Image, coordinate, color);
 }

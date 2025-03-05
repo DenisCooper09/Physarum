@@ -2,7 +2,12 @@
 #include "Agent.glsl"
 #include "Random.glsl"
 
-const float ANGLE = PI / 4;
+uniform float u_SensorAngle = PI / 4.0f;
+uniform float u_RotateAngle = PI / 4.0f;
+
+uniform float u_RSensorExtent = 30.0f;
+uniform float u_CSensorExtent = 50.0f;
+uniform float u_LSensorExtent = 30.0f;
 
 float sensor_probe(Agent agent, float angle, float extent)
 {
@@ -19,17 +24,17 @@ void main()
 {
     uint i = gl_GlobalInvocationID.x;
 
-    float right = sensor_probe(agents[i], ANGLE, 30.0f);
-    float center = sensor_probe(agents[i], 0.0f, 50.0f);
-    float left = sensor_probe(agents[i], -ANGLE, 30.0f);
+    float right = sensor_probe(agents[i], u_SensorAngle, u_RSensorExtent);
+    float center = sensor_probe(agents[i], 0.0f, u_CSensorExtent);
+    float left = sensor_probe(agents[i], -u_SensorAngle, u_LSensorExtent);
 
     if (left > center && left > right)
     {
-        agents[i].heading -= ANGLE;
+        agents[i].heading -= u_RotateAngle;
     }
     else if (right > center && right > left)
     {
-        agents[i].heading += ANGLE;
+        agents[i].heading += u_RotateAngle;
     }
     else if (left == right && left < center && right < center)
     {

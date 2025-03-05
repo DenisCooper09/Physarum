@@ -19,6 +19,7 @@ namespace GLSL
 
         void Link() const;
 
+        void SetUniform(const std::string &name, GLfloat x);
         void SetUniform(const std::string &name, GLint x, GLint y);
     };
 }

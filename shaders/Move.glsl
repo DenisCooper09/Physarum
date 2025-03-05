@@ -1,11 +1,13 @@
 #include "Common.glsl"
 #include "Agent.glsl"
 
+uniform float u_Speed = 5.0f;
+
 void main()
 {
     uint i = gl_GlobalInvocationID.x;
 
-    vec2 delta = vec2(sin(agents[i].heading), cos(agents[i].heading)) * 5.0f + agents[i].position;
+    vec2 delta = vec2(sin(agents[i].heading), cos(agents[i].heading)) * u_Speed + agents[i].position;
     delta = mod(delta, u_Resolution);
 
     ivec2 idelta = ivec2(delta);

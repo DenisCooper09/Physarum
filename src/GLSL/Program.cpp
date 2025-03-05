@@ -44,10 +44,13 @@ namespace GLSL
         }
     }
 
+    void Program::SetUniform(const std::string &name, GLfloat x)
+    {
+        glUniform1f(glGetUniformLocation(m_Handle, name.c_str()), x);
+    }
+
     void Program::SetUniform(const std::string &name, GLint x, GLint y)
     {
-        Use();
         glUniform2i(glGetUniformLocation(m_Handle, name.c_str()), x, y);
-        Unuse();
     }
 }

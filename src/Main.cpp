@@ -219,10 +219,26 @@ int main()
     }
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+    navigate_step.Use();
     navigate_step.SetUniform("u_Resolution", TEXTURE_WIDTH, TEXTURE_HEIGHT);
+    navigate_step.SetUniform("u_SensorAngle", M_PI / 4.0f);
+    navigate_step.SetUniform("u_RotateAngle", M_PI / 4.0f);
+    navigate_step.SetUniform("u_RSensorExtent", 30.0f);
+    navigate_step.SetUniform("u_CSensorExtent", 50.0f);
+    navigate_step.SetUniform("u_LSensorExtent", 30.0f);
+
+    move_step.Use();
     move_step.SetUniform("u_Resolution", TEXTURE_WIDTH, TEXTURE_HEIGHT);
+    move_step.SetUniform("u_Speed", 5.0f);
+
+    diffuse_step.Use();
     diffuse_step.SetUniform("u_Resolution", TEXTURE_WIDTH, TEXTURE_HEIGHT);
+
+    decay_step.Use();
     decay_step.SetUniform("u_Resolution", TEXTURE_WIDTH, TEXTURE_HEIGHT);
+    decay_step.SetUniform("u_Decay", 0.995f);
+
+    GLSL::Program::Unuse();
 
     float last_time = 0.0f, delta_time;
     while (!glfwWindowShouldClose(window))
