@@ -1,15 +1,10 @@
-#include <iostream>
 #include <format>
 #include <vector>
 #include <random>
-#include <map>
-#include <regex>
-#include <string>
-#include <filesystem>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "FileReader.h"
+#include "GLSL/Project.hpp"
 
 static void GLFW_ErrorCallback(int error_code, const char *description)
 {
@@ -19,213 +14,6 @@ static void GLFW_ErrorCallback(int error_code, const char *description)
 static void GLFW_FramebufferSizeCallback(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
-}
-
-enum ShaderType : GLenum
-{
-    Vertex   = GL_VERTEX_SHADER,
-    Fragment = GL_FRAGMENT_SHADER,
-    Compute  = GL_COMPUTE_SHADER
-};
-
-class Shader
-{
-public:
-
-    explicit Shader(ShaderType type)
-    {
-        m_ID = glCreateShader(type);
-    };
-
-    ~Shader()
-    {
-        glDeleteShader(m_ID);
-    }
-
-public:
-
-    void Compile(const std::string &source) const
-    {
-        const char *s = source.c_str();
-        glShaderSource(m_ID, 1, &s, nullptr);
-
-        glCompileShader(m_ID);
-
-        GLint compiled;
-        glGetShaderiv(m_ID, GL_COMPILE_STATUS, &compiled);
-        if (!compiled)
-        {
-            GLchar message[1024];
-            glGetShaderInfoLog(m_ID, 1024, nullptr, message);
-            std::cerr << "[ERROR] Compilation failed: " << message << '\n';
-        }
-    }
-
-    [[nodiscard]] GLuint GetID() const
-    {
-        return m_ID;
-    }
-
-private:
-    GLuint m_ID;
-};
-
-class ShaderProgram
-{
-public:
-
-    explicit ShaderProgram(const std::initializer_list<Shader> &shaders)
-    {
-        m_ID = glCreateProgram();
-
-        for (const auto &shader: shaders)
-        {
-            glAttachShader(m_ID, shader.GetID());
-        }
-
-        glLinkProgram(m_ID);
-
-        GLint program_linked;
-        glGetProgramiv(m_ID, GL_LINK_STATUS, &program_linked);
-
-        if (!program_linked)
-        {
-            GLchar message[1024];
-            glGetProgramInfoLog(m_ID, 1024, nullptr, message);
-            std::cerr << "Error linking program: " << message << '\n';
-        }
-    }
-
-    ~ShaderProgram()
-    {
-        glDeleteProgram(m_ID);
-    }
-
-public:
-
-    void Use() const
-    {
-        glUseProgram(m_ID);
-    }
-
-private:
-    GLuint m_ID;
-};
-
-void CreateShader(GLuint *program, GLuint *comp_prog_agents, GLuint *comp_prog_decay, GLuint *comp_prog_diff, GLuint *comp_prog_nav)
-{
-    std::map<std::string, std::string> files;
-
-    for (const auto &entry: std::filesystem::directory_iterator("../../shaders"))
-    {
-        if (!entry.is_regular_file())
-            continue;
-
-        std::ifstream file(entry.path());
-        std::string   content(std::istreambuf_iterator<char>(file), {});
-
-        files[entry.path().filename().string()] = content;
-    }
-
-    const std::string include_preprocessor = "#include \"";
-
-    for (auto &[filename, content]: files)
-    {
-        size_t start;
-        while ((start = content.find(include_preprocessor)) != std::string::npos)
-        {
-            start += include_preprocessor.length();
-
-            size_t      end          = content.find('"', start);
-            std::string include_file = content.substr(start, end - start);
-
-            start -= include_preprocessor.length();
-            content.replace(start, (end - start) + 1, files[include_file]);
-        }
-    }
-
-    for (const auto &[filename, content]: files)
-    {
-        std::cout << "File: " << filename << "| Content: \n" << content << '\n';
-    }
-
-    Shader vertex(ShaderType::Vertex);
-    Shader fragment(ShaderType::Fragment);
-    Shader compute_agents(ShaderType::Compute);
-    Shader compute_navigation(ShaderType::Compute);
-    Shader compute_decay(ShaderType::Compute);
-    Shader compute_diff(ShaderType::Compute);
-
-    vertex.Compile(files["Vertex.glsl"]);
-    fragment.Compile(files["Fragment.glsl"]);
-    compute_agents.Compile(files["Move.glsl"]);
-    compute_navigation.Compile(files["Navigate.glsl"]);
-    compute_decay.Compile(files["Decay.glsl"]);
-    compute_diff.Compile(files["Diffuse.glsl"]);
-
-    *program          = glCreateProgram();
-    *comp_prog_agents = glCreateProgram();
-    *comp_prog_nav    = glCreateProgram();
-    *comp_prog_decay  = glCreateProgram();
-    *comp_prog_diff   = glCreateProgram();
-
-    glAttachShader(*program, vertex.GetID());
-    glAttachShader(*program, fragment.GetID());
-    glAttachShader(*comp_prog_agents, compute_agents.GetID());
-    glAttachShader(*comp_prog_nav, compute_navigation.GetID());
-    glAttachShader(*comp_prog_decay, compute_decay.GetID());
-    glAttachShader(*comp_prog_diff, compute_diff.GetID());
-
-    glLinkProgram(*program);
-
-    GLint linked;
-    glGetProgramiv(*program, GL_LINK_STATUS, &linked);
-    if (!linked)
-    {
-        GLchar message[1024];
-        glGetProgramInfoLog(*program, 1024, nullptr, message);
-        std::cerr << "Failed to link program: " << message << "\n";
-    }
-
-    glLinkProgram(*comp_prog_agents);
-
-    glGetProgramiv(*comp_prog_agents, GL_LINK_STATUS, &linked);
-    if (!linked)
-    {
-        GLchar message[1024];
-        glGetProgramInfoLog(*comp_prog_agents, 1024, nullptr, message);
-        std::cerr << "Failed to link program: " << message << "\n";
-    }
-
-    glLinkProgram(*comp_prog_nav);
-
-    glGetProgramiv(*comp_prog_nav, GL_LINK_STATUS, &linked);
-    if (!linked)
-    {
-        GLchar message[1024];
-        glGetProgramInfoLog(*comp_prog_nav, 1024, nullptr, message);
-        std::cerr << "Failed to link program: " << message << "\n";
-    }
-
-    glLinkProgram(*comp_prog_decay);
-
-    glGetProgramiv(*comp_prog_decay, GL_LINK_STATUS, &linked);
-    if (!linked)
-    {
-        GLchar message[1024];
-        glGetProgramInfoLog(*comp_prog_decay, 1024, nullptr, message);
-        std::cerr << "Failed to link program: " << message << "\n";
-    }
-
-    glLinkProgram(*comp_prog_diff);
-
-    glGetProgramiv(*comp_prog_diff, GL_LINK_STATUS, &linked);
-    if (!linked)
-    {
-        GLchar message[1024];
-        glGetProgramInfoLog(*comp_prog_diff, 1024, nullptr, message);
-        std::cerr << "Failed to link program: " << message << "\n";
-    }
 }
 
 int main()
@@ -293,8 +81,33 @@ int main()
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, TEXTURE_WIDTH, TEXTURE_HEIGHT, 0, GL_RGBA, GL_FLOAT, nullptr);
     glBindImageTexture(0, texture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
-    GLuint prog, comp_prog_agents, comp_prog_decay, comp_prog_diff, comp_prog_nav;
-    CreateShader(&prog, &comp_prog_agents, &comp_prog_decay, &comp_prog_diff, &comp_prog_nav);
+    GLSL::Project project(
+            "../../shaders",
+            {
+                    {"Vertex.glsl",   GLSL::ShaderType::Vertex},
+                    {"Fragment.glsl", GLSL::ShaderType::Fragment},
+
+                    {"Common.glsl",   GLSL::ShaderType::Header},
+                    {"Random.glsl",   GLSL::ShaderType::Header},
+                    {"Agent.glsl",    GLSL::ShaderType::Header},
+                    {"Sensor.glsl",   GLSL::ShaderType::Header},
+
+                    {"Navigate.glsl", GLSL::ShaderType::Compute},
+                    {"Move.glsl",     GLSL::ShaderType::Compute},
+                    {"Diffuse.glsl",  GLSL::ShaderType::Compute},
+                    {"Decay.glsl",    GLSL::ShaderType::Compute},
+            }
+    );
+
+    project.Preprocess();
+
+    GLSL::Program draw_step, move_step, navigate_step, decay_step, diffuse_step;
+
+    project.Build(draw_step, {"Vertex.glsl", "Fragment.glsl"});
+    project.Build(move_step, {"Move.glsl"});
+    project.Build(navigate_step, {"Navigate.glsl"});
+    project.Build(diffuse_step, {"Diffuse.glsl"});
+    project.Build(decay_step, {"Decay.glsl"});
 
     uint32_t vao, vbo, ebo;
     glGenVertexArrays(1, &vao);
@@ -406,28 +219,10 @@ int main()
     }
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-    glUseProgram(comp_prog_nav);
-    {
-        glUniform2i(glGetUniformLocation(comp_prog_nav, "u_Resolution"), TEXTURE_WIDTH, TEXTURE_HEIGHT);
-    }
-    glUseProgram(comp_prog_agents);
-    {
-        glUniform2i(glGetUniformLocation(comp_prog_agents, "u_Resolution"), TEXTURE_WIDTH, TEXTURE_HEIGHT);
-    }
-    glUseProgram(comp_prog_diff);
-    {
-        glUniform2i(glGetUniformLocation(comp_prog_diff, "u_Resolution"), TEXTURE_WIDTH, TEXTURE_HEIGHT);
-    }
-    glUseProgram(comp_prog_decay);
-    {
-        glUniform2i(glGetUniformLocation(comp_prog_decay, "u_Resolution"), TEXTURE_WIDTH, TEXTURE_HEIGHT);
-    }
-    glUseProgram(0);
-
-    // Shader<Vertex, Fragment> main_shader("../../Vertex.vert", "../../Fragment.frag");
-    // Shader main_shader({Vertex, "../../Vertex.vert"}, {Fragment, "../../Fragment.frag"});
-
-    // Compute decay("../../Decay.comp");
+    navigate_step.SetUniform("u_Resolution", TEXTURE_WIDTH, TEXTURE_HEIGHT);
+    move_step.SetUniform("u_Resolution", TEXTURE_WIDTH, TEXTURE_HEIGHT);
+    diffuse_step.SetUniform("u_Resolution", TEXTURE_WIDTH, TEXTURE_HEIGHT);
+    decay_step.SetUniform("u_Resolution", TEXTURE_WIDTH, TEXTURE_HEIGHT);
 
     float last_time = 0.0f, delta_time;
     while (!glfwWindowShouldClose(window))
@@ -439,26 +234,24 @@ int main()
         glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUseProgram(comp_prog_nav);
+        navigate_step.Use();
         glDispatchCompute(NUM_AGENTS, 1, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-        glUseProgram(comp_prog_agents);
-        glUniform1f(glGetUniformLocation(comp_prog_agents, "u_DeltaTime"), delta_time);
-        glUniform1f(glGetUniformLocation(comp_prog_agents, "u_Time"), current_time);
+        move_step.Use();
         glDispatchCompute(NUM_AGENTS, 1, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-        glUseProgram(comp_prog_diff);
+        diffuse_step.Use();
         glDispatchCompute(TEXTURE_WIDTH, TEXTURE_HEIGHT, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-        glUseProgram(comp_prog_decay);
+        decay_step.Use();
         glDispatchCompute(TEXTURE_WIDTH, TEXTURE_HEIGHT, 1);
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
+        draw_step.Use();
         glBindTexture(GL_TEXTURE_2D, texture);
-        glUseProgram(prog); // main_shader.Use();
         glBindVertexArray(vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, indices);
 
