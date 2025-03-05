@@ -1,42 +1,5 @@
-#version 460 core
-
-layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
-layout (rgba32f, binding = 0) uniform image2D u_Image;
-
-uniform ivec2 u_Resolution;
-
-const float PI = 3.14159265359;
-
-struct Agent
-{
-    vec2 position;
-    float heading;
-    float cooldown;
-    int sensor_offset;
-    int sensor_number;
-
-    float _padding1;
-    float _padding2;
-};
-
-struct Sensor
-{
-    float angle;
-    float extent;
-
-    float _padding1;
-    float _padding2;
-};
-
-layout (std430, binding = 1) buffer Agents
-{
-    Agent agents[];
-};
-
-layout (std430, binding = 2) buffer Sensors
-{
-    Sensor sensors[];
-};
+#include "Common.glsl"
+#include "Agent.glsl"
 
 void main()
 {

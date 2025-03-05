@@ -1,30 +1,8 @@
-#version 460 core
-
-layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
-layout (rgba32f, binding = 0) uniform image2D u_Image;
-
-uniform ivec2 u_Resolution;
-
-const float PI = 3.14159265359;
+#include "Common.glsl"
+#include "Agent.glsl"
+#include "Random.glsl"
 
 const float ANGLE = PI / 4;
-
-struct Agent
-{
-    vec2 position;
-    float heading;
-    float cooldown;
-    int sensor_offset;
-    int sensor_number;
-
-    float _padding1;
-    float _padding2;
-};
-
-layout (std430, binding = 1) buffer Agents
-{
-    Agent agents[];
-};
 
 float sensor_probe(Agent agent, float angle, float extent)
 {
@@ -35,11 +13,6 @@ float sensor_probe(Agent agent, float angle, float extent)
     position = mod(position, u_Resolution);
 
     return imageLoad(u_Image, ivec2(position)).r;
-}
-
-float random(vec2 coordinate)
-{
-    return fract(sin(dot(coordinate, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
 void main()

@@ -1,9 +1,13 @@
 #include <iostream>
 #include <format>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include <vector>
 #include <random>
+#include <map>
+#include <regex>
+#include <string>
+#include <filesystem>
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
 
 #include "FileReader.h"
 
@@ -40,13 +44,10 @@ public:
 
 public:
 
-    void Compile(const std::string &path) const
+    void Compile(const std::string &source) const
     {
-        std::ifstream file(path);
-        std::string   source(std::istreambuf_iterator<char>(file), {});
-
-        const char *source_c_str = source.c_str();
-        glShaderSource(m_ID, 1, &source_c_str, nullptr);
+        const char *s = source.c_str();
+        glShaderSource(m_ID, 1, &s, nullptr);
 
         glCompileShader(m_ID);
 
@@ -56,7 +57,7 @@ public:
         {
             GLchar message[1024];
             glGetShaderInfoLog(m_ID, 1024, nullptr, message);
-            std::cerr << "[ERROR] " << path << " | Compilation failed: " << message << '\n';
+            std::cerr << "[ERROR] Compilation failed: " << message << '\n';
         }
     }
 
@@ -113,6 +114,41 @@ private:
 
 void CreateShader(GLuint *program, GLuint *comp_prog_agents, GLuint *comp_prog_decay, GLuint *comp_prog_diff, GLuint *comp_prog_nav)
 {
+    std::map<std::string, std::string> files;
+
+    for (const auto &entry: std::filesystem::directory_iterator("../../shaders"))
+    {
+        if (!entry.is_regular_file())
+            continue;
+
+        std::ifstream file(entry.path());
+        std::string   content(std::istreambuf_iterator<char>(file), {});
+
+        files[entry.path().filename().string()] = content;
+    }
+
+    const std::string include_preprocessor = "#include \"";
+
+    for (auto &[filename, content]: files)
+    {
+        size_t start;
+        while ((start = content.find(include_preprocessor)) != std::string::npos)
+        {
+            start += include_preprocessor.length();
+
+            size_t      end          = content.find('"', start);
+            std::string include_file = content.substr(start, end - start);
+
+            start -= include_preprocessor.length();
+            content.replace(start, (end - start) + 1, files[include_file]);
+        }
+    }
+
+    for (const auto &[filename, content]: files)
+    {
+        std::cout << "File: " << filename << "| Content: \n" << content << '\n';
+    }
+
     Shader vertex(ShaderType::Vertex);
     Shader fragment(ShaderType::Fragment);
     Shader compute_agents(ShaderType::Compute);
@@ -120,12 +156,12 @@ void CreateShader(GLuint *program, GLuint *comp_prog_agents, GLuint *comp_prog_d
     Shader compute_decay(ShaderType::Compute);
     Shader compute_diff(ShaderType::Compute);
 
-    vertex.Compile("../../shaders/Vertex.vert");
-    fragment.Compile("../../shaders/Fragment.frag");
-    compute_agents.Compile("../../shaders/Agents.comp");
-    compute_navigation.Compile("../../shaders/Navigate.comp");
-    compute_decay.Compile("../../shaders/Decay.comp");
-    compute_diff.Compile("../../shaders/Diffuse.comp");
+    vertex.Compile(files["Vertex.glsl"]);
+    fragment.Compile(files["Fragment.glsl"]);
+    compute_agents.Compile(files["Move.glsl"]);
+    compute_navigation.Compile(files["Navigate.glsl"]);
+    compute_decay.Compile(files["Decay.glsl"]);
+    compute_diff.Compile(files["Diffuse.glsl"]);
 
     *program          = glCreateProgram();
     *comp_prog_agents = glCreateProgram();
