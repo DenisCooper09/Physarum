@@ -263,12 +263,12 @@ int main()
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBOs[0]);
     {
-        glBufferData(GL_SHADER_STORAGE_BUFFER, (GLsizeiptr) (agents.size() * sizeof(Agent)), agents.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (GLsizeiptr)(agents.size() * sizeof(Agent)), agents.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, SSBOs[0]);
     }
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBOs[1]);
     {
-        glBufferData(GL_SHADER_STORAGE_BUFFER, (GLsizeiptr) (sensors.size() * sizeof(Sensor)), sensors.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (GLsizeiptr)(sensors.size() * sizeof(Sensor)), sensors.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, SSBOs[1]);
     }
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
@@ -305,9 +305,43 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        if (ImGui::Begin("Hello!"))
+        if (ImGui::Begin("Simulation Parameters"))
         {
-            ImGui::Text("Hello, World!");
+            static float sensor_angle   = M_PI / 4.0f;
+            static float rotate_angle   = M_PI / 4.0f;
+            static float RSensor_extent = 30.0f;
+            static float CSensor_extent = 50.0f;
+            static float LSensor_extent = 30.0f;
+            static float speed          = 5.0f;
+            static float decay          = 0.995f;
+
+            bool updated = false;
+
+            updated |= ImGui::SliderAngle("Sensor Angle", &sensor_angle);
+            updated |= ImGui::SliderAngle("Rotate Angle", &rotate_angle);
+            updated |= ImGui::SliderFloat("Right Sensor Extent", &RSensor_extent, 1, 1000);
+            updated |= ImGui::SliderFloat("Central Sensor Extent", &CSensor_extent, 1, 1000);
+            updated |= ImGui::SliderFloat("Left Sensor Extent", &LSensor_extent, 1, 1000);
+            updated |= ImGui::SliderFloat("Speed", &speed, 0.1f, 10.0f);
+            updated |= ImGui::SliderFloat("Decay", &decay, 0.0f, 1.0f);
+
+            if (updated)
+            {
+                navigate_step.Use();
+                navigate_step.SetUniform("u_SensorAngle", sensor_angle);
+                navigate_step.SetUniform("u_RotateAngle", rotate_angle);
+                navigate_step.SetUniform("u_RSensorExtent", RSensor_extent);
+                navigate_step.SetUniform("u_CSensorExtent", CSensor_extent);
+                navigate_step.SetUniform("u_LSensorExtent", LSensor_extent);
+
+                move_step.Use();
+                move_step.SetUniform("u_Speed", speed);
+
+                decay_step.Use();
+                decay_step.SetUniform("u_Decay", decay);
+
+                GLSL::Program::Unuse();
+            }
 
             if (ImGui::Button("Save"))
             {
