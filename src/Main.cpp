@@ -23,6 +23,28 @@ static void GLFW_FramebufferSizeCallback(GLFWwindow *window, int width, int heig
     glViewport(0, 0, width, height);
 }
 
+std::filesystem::path NextFilename(const std::filesystem::path &directory, const std::string &base_name, const std::string &extension)
+{
+    if (!std::filesystem::exists(directory))
+    {
+        std::filesystem::create_directory(directory);
+    }
+
+    uint32_t              number = 0;
+    std::filesystem::path filename;
+
+    do
+    {
+        std::ostringstream oss;
+        oss << base_name << number << extension;
+        filename = directory / oss.str();
+        ++number;
+    }
+    while (std::filesystem::exists(filename));
+
+    return filename;
+}
+
 static bool SaveTexture_PNG(GLuint texture, GLint width, GLint height, const std::filesystem::path &path)
 {
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -263,12 +285,12 @@ int main()
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBOs[0]);
     {
-        glBufferData(GL_SHADER_STORAGE_BUFFER, (GLsizeiptr)(agents.size() * sizeof(Agent)), agents.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (GLsizeiptr) (agents.size() * sizeof(Agent)), agents.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, SSBOs[0]);
     }
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, SSBOs[1]);
     {
-        glBufferData(GL_SHADER_STORAGE_BUFFER, (GLsizeiptr)(sensors.size() * sizeof(Sensor)), sensors.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_SHADER_STORAGE_BUFFER, (GLsizeiptr) (sensors.size() * sizeof(Sensor)), sensors.data(), GL_DYNAMIC_DRAW);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, SSBOs[1]);
     }
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
@@ -351,7 +373,8 @@ int main()
                 glDispatchCompute(TEXTURE_WIDTH, TEXTURE_HEIGHT, 1);
                 glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-                SaveTexture_PNG(image_save_texture, TEXTURE_WIDTH, TEXTURE_HEIGHT, "image.png");
+                auto path = NextFilename("Images", "Image", ".png");
+                SaveTexture_PNG(image_save_texture, TEXTURE_WIDTH, TEXTURE_HEIGHT, path);
             }
 
             ImGui::End();
