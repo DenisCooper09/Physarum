@@ -23,6 +23,28 @@ static void GLFW_FramebufferSizeCallback(GLFWwindow *window, int width, int heig
     glViewport(0, 0, width, height);
 }
 
+std::filesystem::path NextFilename(const std::filesystem::path &directory, const std::string &base_name, const std::string &extension)
+{
+    if (!std::filesystem::exists(directory))
+    {
+        std::filesystem::create_directory(directory);
+    }
+
+    uint32_t              number = 0;
+    std::filesystem::path filename;
+
+    do
+    {
+        std::ostringstream oss;
+        oss << base_name << number << extension;
+        filename = directory / oss.str();
+        ++number;
+    }
+    while (std::filesystem::exists(filename));
+
+    return filename;
+}
+
 static bool SaveTexture_PNG(GLuint texture, GLint width, GLint height, const std::filesystem::path &path)
 {
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -305,9 +327,43 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        if (ImGui::Begin("Hello!"))
+        if (ImGui::Begin("Simulation Parameters"))
         {
-            ImGui::Text("Hello, World!");
+            static float sensor_angle   = M_PI / 4.0f;
+            static float rotate_angle   = M_PI / 4.0f;
+            static float RSensor_extent = 30.0f;
+            static float CSensor_extent = 50.0f;
+            static float LSensor_extent = 30.0f;
+            static float speed          = 5.0f;
+            static float decay          = 0.995f;
+
+            bool updated = false;
+
+            updated |= ImGui::SliderAngle("Sensor Angle", &sensor_angle);
+            updated |= ImGui::SliderAngle("Rotate Angle", &rotate_angle);
+            updated |= ImGui::SliderFloat("Right Sensor Extent", &RSensor_extent, 1, 1000);
+            updated |= ImGui::SliderFloat("Central Sensor Extent", &CSensor_extent, 1, 1000);
+            updated |= ImGui::SliderFloat("Left Sensor Extent", &LSensor_extent, 1, 1000);
+            updated |= ImGui::SliderFloat("Speed", &speed, 0.1f, 10.0f);
+            updated |= ImGui::SliderFloat("Decay", &decay, 0.0f, 1.0f);
+
+            if (updated)
+            {
+                navigate_step.Use();
+                navigate_step.SetUniform("u_SensorAngle", sensor_angle);
+                navigate_step.SetUniform("u_RotateAngle", rotate_angle);
+                navigate_step.SetUniform("u_RSensorExtent", RSensor_extent);
+                navigate_step.SetUniform("u_CSensorExtent", CSensor_extent);
+                navigate_step.SetUniform("u_LSensorExtent", LSensor_extent);
+
+                move_step.Use();
+                move_step.SetUniform("u_Speed", speed);
+
+                decay_step.Use();
+                decay_step.SetUniform("u_Decay", decay);
+
+                GLSL::Program::Unuse();
+            }
 
             if (ImGui::Button("Save"))
             {
@@ -317,7 +373,8 @@ int main()
                 glDispatchCompute(TEXTURE_WIDTH, TEXTURE_HEIGHT, 1);
                 glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-                SaveTexture_PNG(image_save_texture, TEXTURE_WIDTH, TEXTURE_HEIGHT, "image.png");
+                auto path = NextFilename("Images", "Image", ".png");
+                SaveTexture_PNG(image_save_texture, TEXTURE_WIDTH, TEXTURE_HEIGHT, path);
             }
 
             ImGui::End();
