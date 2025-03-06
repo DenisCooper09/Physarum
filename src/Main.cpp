@@ -4,6 +4,9 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -18,6 +21,18 @@ static void GLFW_ErrorCallback(int error_code, const char *description)
 static void GLFW_FramebufferSizeCallback(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
+}
+
+static bool SaveTexture_PNG(GLuint texture, GLint width, GLint height, const std::filesystem::path &path)
+{
+    glBindTexture(GL_TEXTURE_2D, texture);
+    std::vector<GLubyte> pixels(width * height * 4);
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    stbi_flip_vertically_on_write(true);
+
+    return stbi_write_png(path.string().c_str(), width, height, 4, pixels.data(), width * 4);
 }
 
 int main()
@@ -97,7 +112,7 @@ int main()
     const GLuint TEXTURE_WIDTH = 2048, TEXTURE_HEIGHT = 2048;
     const GLuint NUM_AGENTS    = 20000;
 
-    GLuint texture;
+    GLuint texture, image_save_texture;
     glGenTextures(1, &texture);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -108,33 +123,45 @@ int main()
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, TEXTURE_WIDTH, TEXTURE_HEIGHT, 0, GL_RGBA, GL_FLOAT, nullptr);
     glBindImageTexture(0, texture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
+    glGenTextures(1, &image_save_texture);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, image_save_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, TEXTURE_WIDTH, TEXTURE_HEIGHT, 0, GL_RGBA, GL_FLOAT, nullptr);
+    glBindImageTexture(3, image_save_texture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+
     GLSL::Project project(
             "../../shaders",
             {
-                    {"Vertex.glsl",   GLSL::ShaderType::Vertex},
-                    {"Fragment.glsl", GLSL::ShaderType::Fragment},
+                    {"Vertex.glsl",           GLSL::ShaderType::Vertex},
+                    {"Fragment.glsl",         GLSL::ShaderType::Fragment},
 
-                    {"Common.glsl",   GLSL::ShaderType::Header},
-                    {"Random.glsl",   GLSL::ShaderType::Header},
-                    {"Agent.glsl",    GLSL::ShaderType::Header},
-                    {"Sensor.glsl",   GLSL::ShaderType::Header},
+                    {"Common.glsl",           GLSL::ShaderType::Header},
+                    {"Random.glsl",           GLSL::ShaderType::Header},
+                    {"Agent.glsl",            GLSL::ShaderType::Header},
+                    {"Sensor.glsl",           GLSL::ShaderType::Header},
 
-                    {"Navigate.glsl", GLSL::ShaderType::Compute},
-                    {"Move.glsl",     GLSL::ShaderType::Compute},
-                    {"Diffuse.glsl",  GLSL::ShaderType::Compute},
-                    {"Decay.glsl",    GLSL::ShaderType::Compute},
+                    {"Navigate.glsl",         GLSL::ShaderType::Compute},
+                    {"Move.glsl",             GLSL::ShaderType::Compute},
+                    {"Diffuse.glsl",          GLSL::ShaderType::Compute},
+                    {"Decay.glsl",            GLSL::ShaderType::Compute},
+                    {"PrepareSaveImage.glsl", GLSL::ShaderType::Compute},
             }
     );
 
     project.Preprocess();
 
-    GLSL::Program draw_step, move_step, navigate_step, decay_step, diffuse_step;
+    GLSL::Program draw_step, move_step, navigate_step, decay_step, diffuse_step, prepare_save_image_comp;
 
     project.Build(draw_step, {"Vertex.glsl", "Fragment.glsl"});
     project.Build(move_step, {"Move.glsl"});
     project.Build(navigate_step, {"Navigate.glsl"});
     project.Build(diffuse_step, {"Diffuse.glsl"});
     project.Build(decay_step, {"Decay.glsl"});
+    project.Build(prepare_save_image_comp, {"PrepareSaveImage.glsl"});
 
     uint32_t vao, vbo, ebo;
     glGenVertexArrays(1, &vao);
@@ -281,6 +308,18 @@ int main()
         if (ImGui::Begin("Hello!"))
         {
             ImGui::Text("Hello, World!");
+
+            if (ImGui::Button("Save"))
+            {
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, image_save_texture);
+                prepare_save_image_comp.Use();
+                glDispatchCompute(TEXTURE_WIDTH, TEXTURE_HEIGHT, 1);
+                glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+                SaveTexture_PNG(image_save_texture, TEXTURE_WIDTH, TEXTURE_HEIGHT, "image.png");
+            }
+
             ImGui::End();
         }
 
@@ -306,6 +345,7 @@ int main()
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
         draw_step.Use();
+        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
         glBindVertexArray(vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, indices);
